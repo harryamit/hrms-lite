@@ -1,10 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { config } from '../config';
 import { sendError } from './errorHandler';
 import { ErrorCodes } from '../types/api';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
-const REQUIRE_AUTH = process.env.REQUIRE_AUTH === 'true';
 
 export interface JwtPayload {
   sub: string;
@@ -14,7 +12,7 @@ export interface JwtPayload {
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
-  if (!REQUIRE_AUTH) {
+  if (!config.requireAuth) {
     return next();
   }
 
@@ -26,7 +24,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
     (req as Request & { user?: JwtPayload }).user = decoded;
     next();
   } catch {
@@ -37,7 +35,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
 /** Optional: restrict to roles that can delete employees or perform sensitive actions */
 export function requireRole(...allowedRoles: string[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (!REQUIRE_AUTH) return next();
+    if (!config.requireAuth) return next();
     const user = (req as Request & { user?: JwtPayload }).user;
     if (!user?.role || !allowedRoles.includes(user.role)) {
       return sendError(res, 403, 'Insufficient permissions.', 'FORBIDDEN');

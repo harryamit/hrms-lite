@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { config } from './config';
 import { connectDb } from './db/connect';
 import { requestIdMiddleware } from './middleware/requestId';
 import { requestLogger } from './middleware/logger';
@@ -11,9 +12,6 @@ import attendanceRouter from './routes/attendance';
 import dashboardRouter from './routes/dashboard';
 import healthRouter from './routes/health';
 
-const PORT = Number(process.env.PORT) || 3001;
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
-
 const app = express();
 
 app.use(requestIdMiddleware);
@@ -21,7 +19,7 @@ app.use(requestLogger);
 
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN,
+    origin: config.frontendOrigin,
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   })
 );
@@ -45,14 +43,24 @@ app.use((req, res) => {
 
 app.use(errorHandler);
 
-async function start() {
-  await connectDb();
-  app.listen(PORT, () => {
-    console.log(`HRMS Lite API listening on http://localhost:${PORT}/api`);
+async function connectDbWithRetry(): Promise<void> {
+  try {
+    await connectDb();
+    console.log('MongoDB connected.');
+  } catch (err) {
+    console.error(
+      'MongoDB connection failed (will retry):',
+      err instanceof Error ? err.message : err
+    );
+    setTimeout(connectDbWithRetry, config.retryDbMs);
+  }
+}
+
+function start(): void {
+  app.listen(config.port, () => {
+    console.log(`HRMS Lite API listening on port ${config.port} (http://localhost:${config.port}/api)`);
+    connectDbWithRetry();
   });
 }
 
-start().catch((err) => {
-  console.error('Failed to start:', err);
-  process.exit(1);
-});
+start();
