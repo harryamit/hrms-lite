@@ -24,6 +24,7 @@ const attendanceSchema = new Schema<IAttendanceDoc>(
   }
 );
 
+
 attendanceSchema.index({ employeeId: 1 });
 attendanceSchema.index({ date: 1 });
 attendanceSchema.index({ employeeId: 1, date: 1 }, { unique: true });
