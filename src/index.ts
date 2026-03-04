@@ -19,7 +19,7 @@ app.use(requestLogger);
 
 app.use(
   cors({
-    origin: config.frontendOrigin,
+    origin: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   })
 );
